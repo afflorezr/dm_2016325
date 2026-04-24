@@ -21,6 +21,7 @@
 | Mark Philips   | Canada  | Bleed The Freak       | Rock   | 0.99            |
 
 **Usa un LEFT JOIN para encontrar pistas que nunca han sido vendidas (que no aparecen en InvoiceLine).**
+
 A continuacion se muestran 10 de las 1519 pistas sin ventas encontradas
 | pista |
 |--------------------------|
