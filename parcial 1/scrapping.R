@@ -59,9 +59,11 @@ vol <- vol[, c("id","order","year","url")]
 cat("* Retrieving volumes info: CHECK ✅     \n\n")
 
 # ------------------------- PASO 2: RECOLECCIÓN SISTEMÁTICA DE ARTÍCULOS ---------------------------
-# Ahora se recorrera la información de todos los volumenes para extraer las urls de los articulos y
-# evetualmente ir a esas urls para extraer la información disponible de los artículos
+# Ahora se recorreran las URLs de todos los volumenes para extraer las urls de los articulos (Así como
+# sus títulos) y de forma sistemática recorrer las urls de esos artículos para extraer la información
+# necesaria de los artículos. 
 
+# URLS DE LOS ARTÍCULOS
 total.vol <- nrow(vol)
 articles <- data.frame()
 count <- 1
@@ -91,3 +93,41 @@ for (id in vol$id){
 }
 cat('* Retrieving articles URLs: CHECK ✅              \n\n')
 
+
+# INFORMACIÓN DE LOS ARTÍCULOS
+art.info <- data.frame()
+total.art <- nrow(articles)
+count <- 1
+for (url in articles$url){
+  cat(sprintf('* Retrieving articles info: (%d/%d) ⌛\r', count, total.art))
+  
+  article <- read_html(url)
+  
+  art.info <- rbind(
+    art.info,
+    cbind(url = url, 
+          abstract = article|> 
+            html_element('.article-abstract') |> 
+            html_text2(), 
+          date = article|> 
+            html_elements(".col-sm-8") |> 
+            html_text2() |> 
+            (\(x) (x[c(2)]))(),
+          DOI = article|> 
+            html_elements(".col-sm-8") |> 
+            html_text2() |> 
+            (\(x) (x[c(3)]))(),
+          authors = article |> 
+            html_elements('.authors a') |> 
+            html_attr('href') |> 
+            (\(x) ifelse(length(x) == 0, '', paste0(x, collapse=' | ')))())
+  )
+  count <- count + 1
+}
+
+cat('* Retrieving articles info: CHECK ✅              \n\n')
+
+# Autores
+# pagina |> 
+#   html_elements('.authors strong') |> 
+#   html_text2()
