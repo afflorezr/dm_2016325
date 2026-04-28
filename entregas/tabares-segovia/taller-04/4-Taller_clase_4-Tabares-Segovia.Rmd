@@ -1,0 +1,231 @@
+---
+title: "Taller-clase_4-Tabares-Segovia"
+output: html_document
+date: "2026-04-21"
+---
+
+Solucion cuestionario Taller
+
+Parte 1
+
+
+Con la base de datos Chinook, responde las siguientes preguntas usando sentencias SQL.
+
+¿Cuántas pistas hay en total en la base de datos?
+¿Cuántos géneros distintos existen?
+Obtén el nombre del género, el número de pistas y la duración promedio (en minutos) para cada género. Ordena de mayor a menor número de pistas.
+¿Cuáles son las 5 pistas más largas? Muestra el nombre, el álbum y la duración en minutos.
+¿Cuántas pistas tienen un UnitPrice superior a $0.99? ¿Qué porcentaje representan del total?
+Calcula la media, mínimo, máximo y varianza (en SQL) de la duración en milisegundos de todas las pistas.
+
+
+```{r}
+#Cargamos los paquetes necesarios y hacemos la conexión respectiva
+
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+# Abrimos la conexión
+con <- dbConnect(RSQLite::SQLite(), "chinook.db")
+cat("Conexión establecida.\n")
+```
+```{r}
+dbListTables(con)
+```
+
+A continuacion sleeccionamos alas columnas de la tabla track para mirar el numero total de pistas, que en esta caso la BS nos presenta como name
+
+```{r}
+dbListFields(con, "Track")
+dbListFields(con, "Album")
+```
+
+1. Numero total de pistas
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT COUNT(Name) AS Numero_de_pistas
+  FROM Track;
+")
+
+knitr::kable(resultado)
+```
+
+2. Numero total de generos, es posible que varios generos se puedan repetir, por lo que sólo tomaremos los valores únicos.
+
+```{r}
+
+resultado <- dbGetQuery(con, "
+  SELECT COUNT(DISTINCT GenreId) AS total_generos
+    FROM Track;
+")
+
+knitr::kable(resultado)
+
+```
+
+Obtén el nombre del género, el número de pistas y la duración promedio (en minutos) para cada género. Ordena de mayor a menor número de pistas.
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT Genre.Name AS genero,
+         COUNT(*) AS numero_pistas,
+         AVG(Track.Milliseconds) / 60000.0 AS duracion_promedio_min
+  FROM Track
+  JOIN Genre ON Track.GenreId = Genre.GenreId
+  GROUP BY Genre.Name
+  ORDER BY numero_pistas DESC;
+")
+
+knitr::kable(resultado)
+```
+
+
+¿Cuáles son las 5 pistas más largas? Muestra el nombre, el álbum y la duración en minutos.
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT Track.Name AS nombre,
+         Album.Title AS album,
+         Track.Milliseconds / 60000.0 AS duracion_min
+  FROM Track
+  JOIN Album ON Track.AlbumId = Album.AlbumId
+  ORDER BY Track.Milliseconds DESC
+  LIMIT 5;
+")
+
+knitr::kable(resultado)
+```
+
+
+¿Cuántas pistas tienen un UnitPrice superior a $0.99? ¿Qué porcentaje representan del total?
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT COUNT(*) AS pistas_mayor_99_centavos,
+         COUNT(*) * 100.0 / (SELECT COUNT(*) FROM Track) AS porcentaje_total
+  FROM Track
+  WHERE UnitPrice > 0.99;
+")
+
+knitr::kable(resultado)
+```
+
+Calcula la media, mínimo, máximo y varianza (en SQL) de la duración en milisegundos de todas las pistas.
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT AVG(Milliseconds) AS media,
+         MIN(Milliseconds) AS minimo,
+         MAX(Milliseconds) AS maximo,
+         AVG(Milliseconds * Milliseconds) - AVG(Milliseconds) * AVG(Milliseconds) AS varianza
+  FROM Track;
+")
+
+knitr::kable(resultado)
+```
+
+Ejercicio 2: Análisis descriptivo de ventas
+
+
+Inicialmente miramos los nombres de las columnas de las tablas Invoice e InvoiceLine
+
+```{r}
+dbListFields(con, "Invoice")
+dbListFields(con, "InvoiceLine")
+```
+
+
+
+
+¿Cuál es el total de ingresos generados por la tienda? ¿Y el promedio por factura?
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT SUM(Total) AS ingresos_totales,
+         AVG(Total) AS promedio_por_factura
+  FROM Invoice;
+")
+
+knitr::kable(resultado)
+```
+
+¿Cuántas facturas se emitieron por año? Ordena cronológicamente.
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT strftime('%Y', InvoiceDate) AS anho,
+         COUNT(*) AS numero_facturas
+  FROM Invoice
+  GROUP BY anho
+  ORDER BY anho;
+")
+
+knitr::kable(resultado)
+```
+
+
+Identifica los 5 países con más ingresos. Muestra: país, número de facturas, ingreso total y promedio por factura.
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  SELECT BillingCountry AS pais,
+         COUNT(*) AS numero_facturas,
+         SUM(Total) AS ingreso_total,
+         AVG(Total) AS promedio_por_factura
+  FROM Invoice
+  GROUP BY BillingCountry
+  ORDER BY ingreso_total DESC
+  LIMIT 5;
+")
+
+knitr::kable(resultado)
+```
+
+
+
+¿Cuál es la desviación estándar del total de facturas? Calcula primero la varianza en SQL y luego obtén la raíz en R o Python.
+
+
+```{r}
+
+resultado <- dbGetQuery(con, "
+  SELECT AVG(Total * Total) - AVG(Total) * AVG(Total) AS varianza
+  FROM Invoice;
+")
+
+desviacion_estandar <- sqrt(resultado$varianza)
+
+desviacion_estandar
+
+```
+Encuentra los meses con mayor y menor ingreso promedio.
+
+
+```{r}
+resultado <- dbGetQuery(con, "
+  WITH promedios_mensuales AS (
+    SELECT strftime('%m', InvoiceDate) AS mes,
+           AVG(Total) AS ingreso_promedio
+    FROM Invoice
+    GROUP BY mes
+  )
+  SELECT *
+  FROM promedios_mensuales
+  WHERE ingreso_promedio = (SELECT MAX(ingreso_promedio) FROM promedios_mensuales)
+     OR ingreso_promedio = (SELECT MIN(ingreso_promedio) FROM promedios_mensuales)
+  ORDER BY ingreso_promedio DESC;
+")
+
+knitr::kable(resultado)
+```
+
+
+
+
+

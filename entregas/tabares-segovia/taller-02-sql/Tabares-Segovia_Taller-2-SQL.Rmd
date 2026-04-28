@@ -1,0 +1,208 @@
+---
+title: "Taller 4"
+output: html_document
+date: "2026-04-23"
+---
+
+tALLER 2 SQL. Solucion
+
+
+```{r}
+
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+con <- dbConnect(RSQLite::SQLite(), "chinook.db")
+cat("Conexión establecida.\n")
+```
+
+
+Verificamos los nombres de las columnas
+
+```{r}
+head(dbGetQuery(con, "SELECT * FROM Customer"), 5)
+head(dbGetQuery(con, "SELECT * FROM Track"), 5)
+head(dbGetQuery(con, "SELECT * FROM Genre"), 5)
+```
+
+
+1. Escribe una consulta con INNER JOIN que devuelva: nombre del cliente, país, nombre de la pista comprada, género y precio unitario. Limita a 15 filas.
+
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+    c.FirstName || ' ' || c.LastName AS Cliente,
+    c.Country AS Pais,
+    t.Name AS Pista,
+    g.Name AS Genero,
+    il.UnitPrice AS Precio_Unitario
+FROM Customer c
+INNER JOIN Invoice i 
+    ON c.CustomerId = i.CustomerId
+INNER JOIN InvoiceLine il 
+    ON i.InvoiceId = il.InvoiceId
+INNER JOIN Track t 
+    ON il.TrackId = t.TrackId
+INNER JOIN Genre g 
+    ON t.GenreId = g.GenreId
+LIMIT 15;
+")
+```
+
+
+2. Usa un LEFT JOIN para encontrar pistas que nunca han sido vendidas (que no aparecen en InvoiceLine).
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+    t.Name AS Pista
+FROM Track t
+LEFT JOIN InvoiceLine il
+    ON t.TrackId = il.TrackId
+WHERE il.TrackId IS NULL;
+")
+```
+
+
+3. Con una CTE, calcula el total de ingresos por artista (suma de UnitPrice × Quantity de sus pistas vendidas). Muestra los 10 artistas con más ingresos.
+
+
+```{r}
+dbGetQuery(con, "
+WITH ingresos_artista AS (
+    SELECT 
+        ar.Name AS Artista,
+        SUM(il.UnitPrice * il.Quantity) AS Ingresos
+    FROM InvoiceLine il
+    INNER JOIN Track t 
+        ON il.TrackId = t.TrackId
+    INNER JOIN Album al 
+        ON t.AlbumId = al.AlbumId
+    INNER JOIN Artist ar 
+        ON al.ArtistId = ar.ArtistId
+    GROUP BY ar.Name
+)
+SELECT 
+    Artista,
+    Ingresos
+FROM ingresos_artista
+ORDER BY Ingresos DESC
+LIMIT 10;
+")
+```
+
+Extiende la CTE anterior para agregar:
+
+La participación porcentual de cada artista sobre el total de ingresos.
+Un RANK() por ingresos.
+
+
+```{r}
+dbGetQuery(con, "
+WITH ingresos_artista AS (
+    SELECT 
+        ar.Name AS Artista,
+        SUM(il.UnitPrice * il.Quantity) AS Ingresos
+    FROM InvoiceLine il
+    INNER JOIN Track t 
+        ON il.TrackId = t.TrackId
+    INNER JOIN Album al 
+        ON t.AlbumId = al.AlbumId
+    INNER JOIN Artist ar 
+        ON al.ArtistId = ar.ArtistId
+    GROUP BY ar.Name
+)
+SELECT 
+    Artista,
+    Ingresos,
+    ROUND(100.0 * Ingresos / SUM(Ingresos) OVER (), 3) AS Participacion_pct, 
+    RANK() OVER (ORDER BY Ingresos DESC) AS Ranking
+FROM ingresos_artista
+ORDER BY Ingresos DESC
+LIMIT 10;
+")
+
+#Nota mental, si queremos redondear un decimal necesitamos, redondear el over, y podemos ajustar el de la derehca para que nos ponga cada vez más decimales
+```
+
+EJERCICIO 2
+
+Calcula el total de ventas por año y mes (SUBSTR(InvoiceDate, 1, 7)). Ordena cronológicamente.
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+    SUBSTR(InvoiceDate, 1, 7) AS Anio_Mes,
+    SUM(Total) AS Ventas
+FROM Invoice
+GROUP BY Anio_Mes
+ORDER BY Anio_Mes;
+")
+```
+
+
+Agrega a la consulta anterior:
+
+LAG: ventas del mes anterior.
+Variación absoluta respecto al mes anterior.
+Media móvil de 3 meses (ROWS BETWEEN 2 PRECEDING AND CURRENT ROW).
+
+
+```{r}
+dbGetQuery(con, "
+WITH ventas_mensuales AS (
+    SELECT 
+        SUBSTR(InvoiceDate, 1, 7) AS Anio_Mes,
+        SUM(Total) AS Ventas
+    FROM Invoice
+    GROUP BY Anio_Mes
+)
+SELECT 
+    Anio_Mes,
+    Ventas,
+    LAG(Ventas) OVER (ORDER BY Anio_Mes) AS Ventas_Mes_Anterior,
+    Ventas - LAG(Ventas) OVER (ORDER BY Anio_Mes) AS Variacion_Absoluta,
+    AVG(Ventas) OVER (
+        ORDER BY Anio_Mes 
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS Media_Movil_3Meses
+FROM ventas_mensuales
+ORDER BY Anio_Mes;
+")
+
+
+#Nota mental: Variacion absoluta = diferencia
+```
+
+
+Usando NTILE(4), clasifica cada mes en cuartiles según su nivel de ventas. ¿Cuáles meses pertenecen al cuartil superior (Q4)?
+
+```{r}
+dbGetQuery(con, "
+WITH ventas_mensuales AS (
+    SELECT 
+        SUBSTR(InvoiceDate, 1, 7) AS Anio_Mes,
+        SUM(Total) AS Ventas
+    FROM Invoice
+    GROUP BY Anio_Mes
+),
+cuartiles AS (
+    SELECT 
+        Anio_Mes,
+        Ventas,
+        NTILE(4) OVER (ORDER BY Ventas) AS Cuartil
+    FROM ventas_mensuales
+)
+SELECT 
+    Anio_Mes,
+    Ventas
+FROM cuartiles
+WHERE Cuartil = 4
+ORDER BY Ventas DESC;
+")
+```
+
+
+
