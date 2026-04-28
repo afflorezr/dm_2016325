@@ -1,0 +1,116 @@
+import sqlite3
+
+con = sqlite3.connect("chinook.db")
+cur = con.cursor()
+query_1 = """
+SELECT
+c.FirstName || " " || c.LastName AS Cliente,
+c.Country AS Pais,
+t.Name AS Pista,
+g.Name AS Genero,
+il.UnitPrice AS PrecioUnitario
+FROM Customer c
+INNER JOIN Invoice i ON c.CustomerId = i.CustomerId
+INNER JOIN InvoiceLine il ON i.InvoiceId = il.InvoiceId
+INNER JOIN Track t ON il.TrackId = t.TrackId
+INNER JOIN Genre g ON t.GenreId = g.GenreId
+LIMIT 15
+"""
+cur.execute(query_1)
+resultados_1 = cur.fetchall()
+#print(resultados_1)
+
+query_2 = """
+SELECT
+t.Name AS Pista
+FROM Track t
+LEFT JOIN InvoiceLine il ON t.TrackId = il.TrackId
+Where il.InvoiceLineId is NULL
+ORDER BY t.Name
+"""
+cur.execute(query_2)
+resultados_2 = cur.fetchall()
+#for pista in resultados_2:
+    #print(pista)
+
+query_3 = """
+WITH IngresosPorArtista AS (
+SELECT
+ar.ArtistId,
+ar.Name AS Artista,
+SUM(il.UnitPrice * il.Quantity) AS Ingresos
+FROM Artist ar
+INNER JOIN Album al ON ar.ArtistId = al.ArtistId
+INNER JOIN Track t ON al.AlbumId = t.AlbumId
+INNER JOIN InvoiceLine il ON t.TrackId = il.TrackId
+GROUP BY ar.ArtistId, ar.Name
+)
+SELECT
+Artista,
+ROUND(Ingresos, 2) AS IngresosTotales
+FROM IngresosPorArtista
+ORDER BY Ingresos DESC
+LIMIT 10
+"""
+cur.execute(query_3)
+resultados_3 = cur.fetchall()
+#print(resultados_3)
+
+query_4 = """
+WITH IngresosPorArtista AS (
+SELECT
+ar.ArtistId,
+ar.Name AS Artista,
+SUM(il.UnitPrice * il.Quantity) AS Ingresos
+FROM Artist ar
+INNER JOIN Album al ON ar.ArtistId = al.ArtistId
+INNER JOIN Track t ON al.AlbumId = t.AlbumId
+INNER JOIN InvoiceLine il ON t.TrackId = il.TrackId
+GROUP BY ar.ArtistId, ar.Name
+)
+SELECT
+RANK() OVER (ORDER BY Ingresos DESC) AS Ranking,
+Artista,
+ROUND(Ingresos, 2) AS IngresosTotales,
+ROUND(Ingresos * 100.0 / SUM(Ingresos) OVER (), 2) AS PorcentajeParticipacion
+FROM IngresosPorArtista
+ORDER BY Ingresos DESC
+LIMIT 10
+"""
+cur.execute(query_4)
+resultados_4 = cur.fetchall()
+#print(resultados_4)
+
+query_5 = """
+SELECT
+SUBSTR(InvoiceDate, 1,7) AS AñoMes,
+COUNT(*) AS NumFacturas,
+ROUND(SUM(Total),2) AS VentasTotales
+FROM Invoice
+GROUP BY AñoMes
+ORDER BY AñoMes
+"""
+cur.execute(query_5)
+resultados_5 =cur.fetchall()
+#print(resultados_5)
+
+query_6 = """
+WITH VentasMensuales AS (
+SELECT 
+SUBSTR(InvoiceDate, 1,7) AS AñoMes,
+SUM(Total) AS Ventas
+FROM Invoice
+GROUP BY AñoMes
+)
+SELECT
+AñoMes,
+ROUND(Ventas, 2) AS VentasActuales,
+ROUND(LAG(Ventas) OVER (ORDER BY AñoMes), 2) AS VentasMesAnterior,
+ROUND(Ventas - LAG(Ventas) OVER (ORDER BY AñoMes), 2) AS VariacionAbsoluta,
+ROUND(AVG(Ventas) OVER (ORDER BY AñoMes ROWS BETWEEN 2 PRECEDING AND CURRENT ROW), 2) AS MediaMovil3meses
+FROM VentasMensuales
+ORDER BY AñoMes ASC
+"""
+cur.execute(query_6)
+resultados_6 = cur.fetchall()
+print(resultados_6)
