@@ -47,6 +47,38 @@ dm_2016325/
 
 Cada estudiante tiene sus carpetas de talleres creadas desde `taller_01` hasta `taller_05`. Si en una nueva clase aparece otra actividad, se agregará una carpeta adicional siguiendo el mismo patrón.
 
+## Descarga del repositorio
+
+Por defecto, cuando un estudiante clona el repositorio o ejecuta `git pull`, Git actualiza todo el repositorio. Esto significa que verá las carpetas de todos los grupos y estudiantes.
+
+Forma normal de trabajo:
+
+```bash
+git clone https://github.com/afflorezr/dm_2016325.git
+cd dm_2016325
+git pull origin main
+```
+
+Si vas a entregar mediante un fork, reemplaza la URL anterior por la URL de tu propio fork, por ejemplo `https://github.com/tu_usuario/dm_2016325.git`.
+
+Si el estudiante solo quiere trabajar con su carpeta, puede usar una descarga parcial con `sparse-checkout`.
+
+Ejemplo para `grupo_1/jerez_tomas`:
+
+```bash
+git clone --filter=blob:none --sparse https://github.com/afflorezr/dm_2016325.git
+cd dm_2016325
+git sparse-checkout set grupo_1/jerez_tomas
+```
+
+Si estás usando fork, aplica la misma regla: usa la URL de tu fork en el comando `git clone`.
+
+Con esa configuración, en su carpeta local verá principalmente los archivos generales del repositorio y su carpeta personal. Para volver a descargar todo el repositorio:
+
+```bash
+git sparse-checkout disable
+```
+
 ## Instrucciones para entregar una actividad por pull request
 
 ### 1. Identifica tu grupo
