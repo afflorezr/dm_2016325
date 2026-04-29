@@ -1,0 +1,214 @@
+---
+title: "Taller Tipos de Datos"
+author: "Winston Lucano"
+output:
+  html_document:
+    theme: yeti
+    highlight: kate
+    toc: true
+    toc_float: true
+    number_sections: false
+    code_folding: show
+---
+
+<style>
+
+.nota {
+  background-color: #E3F2FD;
+  border-left: 6px solid #1E88E5;
+  padding: 15px 18px;
+  margin: 25px 0;
+  border-radius: 8px;
+}
+
+h1.title {
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+}
+
+.author {
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2em;
+  font-style: italic;
+  color: #444;
+}
+
+.author::after {
+  content: "";
+  display: block;
+  width: 120px;
+  height: 4px;
+  background: linear-gradient(to right, #1E88E5, #00A8A8);
+  margin: 12px auto 0 auto;
+  border-radius: 2px;
+}
+
+
+
+h1 {
+  color: #1E88E5;
+  font-weight: 700;
+}
+
+h2 {
+  color: #00A8A8;
+}
+
+h3 {
+  color: #6F42C1;
+}
+
+
+pre {
+  background-color: #F8F9FA;
+  border-left: 5px solid #1E88E5;
+  border-radius: 6px;
+}
+
+code {
+  color: #D63384;
+}
+
+
+body {
+  text-align: justify;
+}
+
+.destacado {
+  font-family: "Times New Roman", Times, serif !important;
+  font-style: italic;
+  font-size: 1.05em;
+  display: block;
+  margin: 15px 0;
+}
+
+</style>
+
+
+
+
+# Clasificación de tipos de datos
+Para cada fuente de datos, indique: (a) si es estructurada, semi-estructurada o no estructurada; (b) la razón; (c) el paso de preprocesamiento mínimo para convertirla en un tibble analizable.
+
+<div class="destacado">
+1. Microdatos GEIH del DANE (archivo .csv de 300.000 filas).
+</div>
+
+Dado que el archivo .csv está tabulado, ya son datos estructurados, y para convertirla en un tibble, dado que los datos son 300.000 es más adecuado usar "vroom::vroom()"
+
+<div class="destacado">
+2. Respuesta JSON de la API pública datos.gov.co con indicadores de calidad del aire.
+</div>
+
+Lo anterior es Semi-estructurada, dado que los datos en formato JSON no es una tabla en si misma, dado el formato, esto consta de una dupla clave-valor, luego la estructura puede ser anidada. Depende de como estén los datos, se puede convertir directamente con "as.tibble" en R, de lo contrario, tendriamos que usar alguna función del paquete de tidyverse
+
+
+<div class="destacado">
+3. Grabaciones de audio de audiencias judiciales de la Rama Judicial
+</div>
+Es de tipo no estructurada, dado que los audios carecen de una estructura interna de filas o columnas, y no contiene metadatos para identificar al locutor y tampoco se tiene el texto en sí para organizarlo.
+
+Se requiere de un proceso de transcripción automatica, actualmente dada por las IAS, después de ello si podemos extraer entidades para realizar la respectiva tabulación.
+
+<div class="destacado">
+4. Factura electrónica emitida por la DIAN (formato XML)
+</div>
+
+Es un archivo de tipo semi estructurado, dado que XML usa etiquetas para definir la estructura de manera jerarquica.
+
+El preprocesamiento se hace con xml2, leyendo el archivo, navegando por los nodos hasta obtener la información deseada para tabular.
+
+<div class="destacado">
+5. Tabla HTML de Wikipedia scrapeada con rvest en las clases 2–3
+</div>
+De tipo semi estructurada, dado que se tuvo que hacer un proceso de scraping para que la máquina pudiera entenderlo desde el lenguaje HTML.
+El preprocesamiento es tal cual, con la libreria rvest, luego podriamos hacerlo con as.tibble para que quede de mejor manera.
+
+
+# JSON anidado a DataFrame
+Cargamos la URL
+```{r, message=FALSE, warning=FALSE}
+
+library(jsonlite); library(dplyr); library(tibble); library(tidyverse);library(readxl); library(FactoMineR); library(factoextra); library(Matrix)
+url  <- "https://jsonplaceholder.typicode.com/users"
+raw  <- fromJSON(url)
+
+```
+
+Veamos la estructura de raw
+```{r}
+str(raw)
+```
+<div class="destacado">
+1. Explore la estructura con str(raw). ¿Qué columnas son listas anidadas?
+</div>
+Las columnas que son listas anidadas son adress, adress$geo y company, esto se muestra a través del informe, en cada una de ellas dice que es un dataframe con x variables.
+<div class="destacado">
+2. Aplane el objeto a un tibble con una fila por usuario, extrayendo al menos: name, email, address.city, address.geo.lat, address.geo.lng y company.name.
+</div>
+```{r}
+usuarios_flat <- raw %>%
+  as_tibble() %>%
+  tidyr::unpack(cols = c(address, company), names_sep = ".") %>%
+  tidyr::unpack(cols = address.geo, names_sep = ".") %>%
+
+  select(
+    name, 
+    email, 
+    address.city, 
+    address.geo.lat, 
+    address.geo.lng, 
+    company.name
+  )
+
+print(usuarios_flat)
+```
+<div class="destacado">
+3. ¿Qué tipo de dato es esta fuente? ¿Por qué fromJSON no produce directamente un tibble plano?
+</div>
+La anterior fuente al ser en formato JSON, es un dato semi estructurado, dadas las jerarquias que se manejan en el mismo. 
+La función fromJSON no produce directamente un tibble por lo que miramos hace un momento que tiene columnas anidadas, al aplicar cualquier función de "aplanar" nos encontrariamos con el problema que el software no sabrá decidir que nombre colocarle a la columna, tal como vimos en address.
+
+## Matriz de Diseño
+
+Con titanic.csv y las variables age, fare, sibsp, parch (elimine NA):
+
+```{r}
+titanic <- read.csv("https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv")
+titanic <- na.omit(titanic) %>% select(Age, Fare, SibSp, Parch)
+```
+
+<div class="destacado">
+1. Construya \(X\) centrada y escalada con scale(). Reporte sus dimensiones y la memoria que ocupa.
+</div>
+```{r}
+titanic_scale <- scale(titanic, center = T, scale = T)
+tamaño <- object.size(titanic_scale)
+dim <- dim(titanic_scale)
+cat("Tamaño matriz centrada:", tamaño, "bytes")
+cat("Dimensiones matriz centrada:", dim)
+```
+<div class="destacado">
+2. Calcule \(X^TX\). ¿Qué representa la diagonal cuando \(X\) está escalada?.
+</div>
+
+```{r}
+Mult_m <- crossprod(titanic_scale)
+print(Mult_m)
+```
+La diagonal de la matriz que acabamos de calcular, es 713, lo que es \(n-1\)
+representando el número de datos -1, por definición de como escalamos la matriz.
+
+<div class="destacado">
+3. Construya la versión dispersa con Matrix(X, sparse = TRUE). Compare el tamaño en memoria con object.size(). ¿Tiene sentido usar formato disperso aquí?
+</div>
+
+```{r}
+dtm_sparse <- Matrix(as.matrix(titanic), sparse = TRUE)
+tam_spar <- object.size(dtm_sparse)
+cat("Tamaño matriz dispersa:", tam_spar, "bytes")
+```
+
+
+
