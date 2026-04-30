@@ -9,7 +9,7 @@ setwd(here::here())
 library(DBI)
 library(RSQLite)
 library(dplyr)
-con <- dbConnect(RSQLite::SQLite(), "_resources/chinook.db"); cat("Conexión establecida.\n")
+con <- dbConnect(RSQLite::SQLite(), "../_resources/chinook.db"); cat("Conexión establecida.\n")
 
 dbListTables(con)
 
@@ -194,5 +194,7 @@ dbGetQuery(con, "
 #       ROW_NUMBER() en cambio de RANK()
 
 # ==================================================================================================
+
+dbDisconnect(con)
 
 # EOF
