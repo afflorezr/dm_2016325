@@ -160,7 +160,51 @@ MA <- dbGetQuery(con, "
                  SUM(Total) AS Venta_Mes
                  FROM Invoice
                  GROUP BY Mes)
-                 
                 ")
 
+Mq <- dbGetQuery(con, "
+                  WITH VentasPorMes AS (
+                      SELECT SUBSTR(InvoiceDate, 1, 7) AS Mes,
+                             SUM(Total) AS Venta_Mes
+                      FROM Invoice
+                      GROUP BY Mes
+                  ),
+                  Clasificacion AS (
+                      SELECT Mes,
+                             Venta_Mes,
+                             NTILE(4) OVER (ORDER BY Venta_Mes ASC) AS Cuartil
+                      FROM VentasPorMes
+                  )
+                  SELECT Mes, ROUND(Venta_Mes, 2) AS Ventas
+                  FROM Clasificacion
+                  WHERE Cuartil = 4
+                  ORDER BY Ventas DESC
+")
 
+
+
+MejoresMeses <- dbGetQuery(con, "
+                  WITH VentasMensuales AS (
+                      SELECT 
+                          SUBSTR(InvoiceDate, 1, 4) AS Año,
+                          SUBSTR(InvoiceDate, 1, 7) AS Mes,
+                          SUM(Total) AS Venta_Mes
+                      FROM Invoice
+                      GROUP BY Mes
+                  ),
+                  RankingPorAnio AS (
+                      SELECT 
+                          Año,
+                          Mes,
+                          Venta_Mes,
+                          RANK() OVER (
+                              PARTITION BY Año 
+                              ORDER BY Venta_Mes DESC
+                          ) AS Posicion
+                      FROM VentasMensuales
+                  )
+                  SELECT Año, Mes, ROUND(Venta_Mes, 2) AS Ventas_Maximas
+                  FROM RankingPorAnio
+                  WHERE Posicion = 1
+                  ORDER BY Año DESC
+")
