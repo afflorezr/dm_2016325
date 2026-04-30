@@ -1,0 +1,84 @@
+import sqlite3
+import pandas as pd
+
+
+con = sqlite3.connect("chinook.db")
+cur = con.cursor()
+
+cur.execute("SELECT COUNT(*) From Track")
+tracks = cur.fetchone()[0]
+cur.execute("SELECT COUNT(*) From Genre")
+genre = cur.fetchone()[0]
+
+query_4 = """
+SELECT
+    g.Name AS Genero,
+    COUNT(t.TrackId) AS NumPistas,
+    ROUND(AVG(t.Milliseconds) / 60000.0, 2) AS DuracionPromedioMin
+FROM Genre g
+JOIN Track t ON g.GenreId = t.GenreId
+GROUP BY g.GenreId, g.Name
+ORDER BY NumPistas DESC 
+"""
+cur.execute(query_4)
+q4 = cur.fetchall()
+
+query_5 = """
+SELECT
+COUNT(CASE WHEN UnitPrice > 0.99 THEN 1 END) AS PistasMayores,
+COUNT(*) Total,
+ROUND(COUNT(CASE WHEN UnitPrice > 0.99 THEN 1 END)* 100 / COUNT(*), 2) AS Porcentaje
+FROM Track
+"""
+cur.execute(query_5)
+mayores,total,porcentaje = cur.fetchone()
+
+query_6 = """
+SELECT 
+ROUND(AVG(Milliseconds), 2) AS Media,
+MIN(Milliseconds) AS Minimo,
+MAX(Milliseconds) AS Maximo,
+ROUND(AVG(Milliseconds * Milliseconds)- AVG(Milliseconds) * AVG(Milliseconds),2) AS Varianza
+FROM Track
+"""
+
+cur.execute(query_6)
+media,minimo,maximo,varianza = cur.fetchone()
+
+
+query_7 = """
+SELECT
+    ROUND(SUM(Total),2) AS IngresosTotales,
+    ROUND(AVG(Total), 2) AS PromedioPorFactura
+    
+FROM Invoice
+"""
+cur.execute(query_7)
+ingresos, promedio = cur.fetchone()
+
+query_8 = """
+SELECT
+    strftime("%Y", InvoiceDate) AS año,
+    COUNT(*) AS NumFacturas
+FROM Invoice
+GROUP BY año
+ORDER BY año ASC
+"""
+cur.execute(query_8)
+facturas_por_año = cur.fetchall()
+
+print("numero de canciones " + str(tracks))
+print("numero de generos " + str(genre))
+print(f"{"Genero" : <20} {"Pistas": <10} {"Duracion" : <15}")
+for genero,pistas,duracion in q4:
+    print(f"{genero : <20} {pistas: <10} {duracion : <15}")
+print("superiores a 0.99 = " + str(mayores))
+print("porcentaje = " + str(porcentaje)) 
+print("Media = " + str(media))
+print("Minimo = " + str(minimo))
+print("Maximo = " + str(maximo))
+print("Varianza = " + str(varianza))
+print("Ingresos = " + str(ingresos))
+print("Promedio de facturas = " + str(promedio))
+for año, facturas in facturas_por_año:
+    print(str(año)+ " tuvo " + str(facturas) + " facturas ")

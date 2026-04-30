@@ -1,0 +1,167 @@
+---
+title: "Clase_6"
+output: html_document
+date: "2026-04-28"
+---
+
+SOLUCION TALLER CLASE 6 Sebastian Tabares Segovia
+
+Ejercicio 1: clasificación de tipos de datos
+
+Para cada fuente de datos, indique: (a) si es estructurada, semi-estructurada o no estructurada; (b) la razón; (c) el paso de preprocesamiento mínimo para convertirla en un tibble analizable.
+
+1.Microdatos GEIH del DANE (archivo .csv de 300.000 filas)
+
+a.El archivo es estructurado (b) ya que cada columna tiene nombre y tipo fijo.Y, adicionalmente, son representables como Dataframe sin transformacion intermedia. (c) no es necesario un preprocesamiento minimo para convertirla en un tibble analizable.
+
+Respuesta JSON de la API pública datos.gov.co con indicadores de calidad del aire
+
+(a) archivo semiestructurado. (b) su esquema es parcial/variable aunque permite consultas sql. (c) Minimamente necesitariamos aplanarlo -y parsearlo- para hacer el preprocesamiento.
+
+
+Grabaciones de audio de audiencias judiciales de la Rama Judicial
+
+(a) es un dato no estructurado, (b) no tiene un formato predefinido (C) hacer un feature engineeering para convertirlo en represetnación numérica que los algoritmos puedan analizar y posteriormente hacer la conversion de una matriz dsipersa a un algoritmo de minado de datos.
+
+
+Factura electrónica emitida por la DIAN (formato XML)
+
+(a) archivo semiestructurado. (b) su esquema es parcial/variable aunque permite consultas sql. (c) Minimamente necesitariamos aplanarlo -y parsearlo- para hacer el preprocesamiento.
+
+Tabla HTML de Wikipedia scrapeada con rvest en las clases 2–3
+
+(a) archivo semiestructurado. (b) su esquema es parcial/variable aunque permite consultas sql. (c) Minimamente necesitariamos aplanarlo -y parsearlo- para hacer el preprocesamiento.
+
+
+Ejercicio 2: JSON anidado a DataFrame
+
+```{r}
+library(jsonlite); library(dplyr); library(tibble)
+url  <- "https://jsonplaceholder.typicode.com/users"
+raw  <- fromJSON(url)
+```
+
+
+Explore la estructura con str(raw). ¿Qué columnas son listas anidadas?
+
+```{r}
+str(raw)
+```
+Las columnas que son dataframe son address, geo y company
+
+Aplane el objeto a un tibble con una fila por usuario, extrayendo al menos: name, email, address.city, address.geo.lat, address.geo.lng y company.name.
+
+```{r}
+url  <- "https://jsonplaceholder.typicode.com/users"
+raw  <- fromJSON(url)
+
+datos_tbl <- as_tibble(raw) |>
+  mutate(
+    city = address$city,
+    lat  = address$geo$lat,
+    lng  = address$geo$lng,
+    company_name = company$name
+  ) |>
+  select(name, email, city, lat, lng, company_name)
+```
+
+
+
+¿Qué tipo de dato es esta fuente?
+
+
+Es un dato semiestructurado, ya que su forma no es tabular.
+
+¿Por qué fromJSON no produce directamente un tibble plano?
+
+La respuesta es porque Json es jerarquico. 
+
+
+Ejercicio 3: matriz de diseño
+
+Con titanic.csv y las variables age, fare, sibsp, parch (elimine NA):
+
+NOTA: Me toco0 utilizar un codigo de IA ya que no me estaba permitiendo hacer la lectura correcta del documento csv.
+```{r}
+
+#Codigo generado con IA para poder leer los datos (no mes estaba dejando con las alternativas que habia probafdo y es porque al parecer el archivo esta "corrupto")
+
+library(readr)
+library(stringr)
+
+# Leer como texto crudo
+lines <- readLines("titanic.csv")
+
+# 1. Quitar comillas externas
+lines_clean <- str_remove_all(lines, '^"|"$')
+
+# 2. Reemplazar doble comilla por comilla simple
+lines_clean <- str_replace_all(lines_clean, '""', '"')
+
+# Guardar archivo limpio
+writeLines(lines_clean, "titanic_clean.csv")
+
+# Leer correctamente
+titanic <- read_csv("titanic_clean.csv")
+```
+
+
+Construya \(X\) centrada y escalada con scale(). Reporte sus dimensiones y la memoria que ocupa.
+
+
+
+```{r}
+
+datos_modelo <- titanic |>
+  select(Age, Fare, SibSp, Parch) |>
+  na.omit()
+
+#Matriz
+X <- datos_modelo |> as.matrix()
+
+# Escalar
+X_scaled <- scale(X)
+
+# Dimensiones y memoria de la matriz (peso)
+dim(X_scaled)
+object.size(X_scaled)
+```
+Matriz de 4 dimensiones y ocupa 24760 bytes.
+
+
+Calcule \(X^TX\). ¿Qué representa la diagonal cuando \(X\) está escalada?
+
+
+```{r}
+XtX <- crossprod(X_scaled)
+XtX
+
+diag(XtX)
+```
+la diagonal representa el numero de observaciones validas.
+
+Construya la versión dispersa con Matrix(X, sparse = TRUE). Compare el tamaño en memoria con object.size(). ¿Tiene sentido usar formato disperso aquí?
+
+```{r}
+library(Matrix) #usamos esta nueva libreria
+
+X_sparse <- Matrix(X_scaled, sparse = TRUE)
+
+object.size(X_scaled)
+object.size(X_sparse)
+```
+La realidad no tiene mucho sentido crear la version dispersa de los datos dado el tamaño pequeño con que estamos trabajando. Ademas la densidad de los datos es alta por lo que no tiene mucho sentido.
+
+
+¿Qué estructura de datos usaría para modelar las relaciones familiares entre pasajeros (sibsp, parch)? Justifique.
+
+
+Usaria Grafos para poder revisar las relaciones dada la familiaridad de los pasajeros. 
+
+
+
+
+
+
+
+

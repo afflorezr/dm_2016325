@@ -1,0 +1,39 @@
+---
+title: "Taller 5"
+author: "Juan Jose Gomez"
+date: "2026-04-28"
+output: html_document
+---
+
+Ejercicio 1:
+1) Los microdatos GEIH del DANE es estructurada pues es un .csv que nos da una tabla fija, dandonos flas como observaciones, columnas como variables y asi sucesivamente.
+2) La respuesta JSON de la API es semi-estructurada ya que no nos una tabla pero de igual manera tiene estructura con jerarquia 
+3) Las grabaciones de audio son no estructuradas, esta no tiene filas, claves o algo por el estilo. No es posible consultarla con funciones de la misma forma que otras estructuras hasta poder transformarlo en otro tipo de representacion 
+4) La factura electronica de la DIAN es semi-estructurada ya que tiene esquema y jerarquia. Sin embargo no es una tabla completamente plana 
+5) La tabla HTML de Wikipedia es estructurada ya que tiene filas y columnas que se muestran de forma explicita 
+
+Ejercicio 2: 
+
+```{r}
+library(readr)              
+library(pacman)
+p_load(jsonlite,dplyr,tibble)
+url  <- "https://jsonplaceholder.typicode.com/users"
+raw  <- fromJSON(url)
+str(raw)
+```
+Las columnas anidadas son adress, adress$geo y company
+
+```{r}
+usuarios <- tibble(
+  name            = raw$name,
+  email           = raw$email,
+  address_city    = raw$address$city,
+  address_geo_lat = parse_double(raw$address$geo$lat),
+  address_geo_lng = parse_double(raw$address$geo$lng),
+  company_name    = raw$company$name
+)
+
+(usuarios)
+```
+Esto es de tipo semi-estructurada
