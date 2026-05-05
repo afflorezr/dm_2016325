@@ -14,7 +14,7 @@ if (length(pendientes) > 0) {
 # Cargamos los paquetes sin mostrar mensajes
 lapply(paquetes, library, character.only = TRUE)
   
-url <- "https://www.akjournals.com/search?access=all&fromDate=2025&pageSize=50&q1=Journal+of+Behavioral+Addictions&sort=datedescending&toDate=2025&type_0=journalarticle"
+url <- "https://www.akjournals.com/view/journals/2006/14/1/2006.14.issue-1.xml"
 
 # Definimos un user-agent similar al de un navegador real
 user_agent_navegador <- paste(
@@ -35,6 +35,53 @@ respuesta <- request(url) %>%
 pagina <- respuesta %>%
   resp_body_html()
 
-# Mostramos el objeto HTML obtenido
-pagina
-response <- html_elements(pagina, ".c-Button--link")
+#################
+#TITULO
+#################
+titulo <- pagina %>%
+  html_element("[data-testid='block-primitivetitle']") %>%
+  html_text()
+titulo <- titulo[-length(titulo)]
+
+extraccion_general <- function(nodo) {
+  # Extraemos el títulos de los articulos
+  titulo <- nodo %>%
+    html_element("[data-testid='block-primitivetitle']") %>%
+    html_text2()
+  titulo <- titulo[-length(titulo)]
+  
+  # Extraemos el enlace relativo hacia la página del producto
+  doi <- nodo |> 
+    html_elements( " a,[target='_blank'], .c-Button--link") |>
+    html_text()
+  doi <- doi[grep(pattern="https://doi*",doi)]
+  
+  # Extraemos el precio mostrado en el resultado de búsqueda
+  precio <- nodo %>%
+    html_element(".a-price .a-offscreen") %>%
+    html_text2()
+  
+  # Extraemos el texto de la valoración, por ejemplo '4.5 out of 5 stars'
+  rating <- nodo %>%
+    html_element(".a-icon-alt") %>%
+    html_text2()
+  
+  # Extraemos el número de reseñas o valoraciones asociadas al producto
+  n_resenas <- nodo %>%
+    html_element("[aria-label$='ratings'], .s-link-style .s-underline-text") %>%
+    html_text2()
+  
+  # Construimos una fila con los campos extraídos para este producto
+  tibble(
+    titulo = titulo,
+    # Si el enlace no existe, dejamos un valor faltante; si existe, construimos la URL completa
+    enlace = ifelse(
+      is.na(enlace_relativo),
+      NA_character_,
+      paste0("https://www.amazon.com", enlace_relativo)
+    ),
+    precio = precio,
+    rating = rating,
+    n_resenas = n_resenas
+  )
+}
