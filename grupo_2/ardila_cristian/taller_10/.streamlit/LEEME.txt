@@ -1,2 +1,0 @@
-'password = "analista123"',
- ".streamlit/secrets.toml"
