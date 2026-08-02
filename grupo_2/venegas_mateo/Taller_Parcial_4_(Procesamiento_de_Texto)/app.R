@@ -721,12 +721,12 @@ server <- function(input, output, session) {
         )
       )
     ) |>
-      formatStyle("Score",
+      formatStyle("score",
                   background = styleColorBar(c(0, max(df$score, na.rm=TRUE)), "#93C5FD"),
                   backgroundSize="100% 88%", backgroundRepeat="no-repeat",
                   backgroundPosition="center", fontWeight="bold") |>
-      formatStyle("#", fontWeight="bold", color="#1E3A5F") |>
-      formatStyle("Tema",
+      formatStyle("rank", fontWeight="bold", color="#1E3A5F") |>
+      formatStyle("topic_label",
                   color = styleEqual(names(PALETTE), unname(PALETTE)),
                   fontWeight = "bold")
   }
