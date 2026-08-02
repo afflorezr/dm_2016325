@@ -1,10 +1,10 @@
 name: JAIR-Dashboard-T4
-title: JAIR Dashboard T4 - Sistema IR - Mineria de Datos 2026
+title: JAIR Dashboard T4 - Sistema IR - Minería de Datos 2026
 username: mateovecla12
 account: mateovecla12
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
-appId: 
-bundleId: 
+appId: 17660094
+bundleId: 12353461
 url: https://mateovecla12.shinyapps.io/JAIR-Dashboard-T4/
 version: 1

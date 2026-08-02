@@ -18,6 +18,8 @@ El nuevo módulo **"Buscador IR"** permite escribir una consulta en lenguaje nat
 
 **https://mateovecla12.shinyapps.io/JAIR-Dashboard-T4/**
 
+> ✅ Desplegado el 2026-08-02
+
 ## Estructura de Archivos
 
 ```
